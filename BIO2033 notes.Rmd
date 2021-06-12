@@ -1,0 +1,436 @@
+---
+title: "BIO2033"
+author: "Syaziah"
+date: "11th June 2021"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+## Setting up {.tabset}
+Packages used:
+```{r, message=FALSE,warning=FALSE}
+library(bio2020)
+library(tidyverse)
+library(ggplot2)
+library(rmarkdown)
+library(formattable)
+library(gridExtra)
+```
+Import data:
+```{r}
+rawdata <- read.csv("bio2033data/rawdata.csv")
+rawdata1 <- read.csv("bio2033data/rawdata1.csv")
+rawdata2 <- read.csv("bio2033data/rawdata2.csv")
+target1 <- read.csv("bio2033data/target1.csv")
+target2 <- read.csv("bio2033data/target2.csv")
+target3 <- read.csv("bio2033data/target3.csv")
+```
+
+Convert the 'character' to factors using function as.factor():
+
+### rawdata
+```{r}
+rawdata$Target <- as.factor(rawdata$Target)
+rawdata$Strain <- as.factor(rawdata$Strain)
+summary(rawdata)
+```
+
+### rawdata1
+```{r}
+rawdata1$target <- as.factor(rawdata1$target)
+summary(rawdata1)
+```
+
+### rawdata2
+```{r}
+rawdata2$Strains <- as.factor(rawdata2$Strains)
+summary(rawdata2)
+```
+
+### target
+```{r}
+target1$T1_strain <- as.factor(target1$T1_strain)
+summary(target1)
+target2$T2_strain <- as.factor(target2$T2_strain)
+summary(target2)
+target3$T3_strain <- as.factor(target3$T3_strain)
+summary(target3)
+```
+
+```{r, include=FALSE}
+# To end the tabbed content:
+# When not using floating toc, this is Pandoc creating the toc and you can ignore using {.unlisted .unnumbered}
+# When you use floating toc, this is not Pandoc but tocify which handles the toc and you can ignore using {.toc-ignore}
+```
+
+## {.toc-ignore}
+Set up color-blind palette:
+```{r}
+cbp1 <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+```
+
+## Boxplots
+Using **rawdata**:
+```{r}
+head(formattable(rawdata, align=c("l", "c", "c")))
+```
+
+Boxplot showing the effect of the strains against each of the targets.
+```{r, results='hold', warning=FALSE}
+fig1 <- ggplot(rawdata, aes(x=Strain, y=ZOI, fill=Target)) +
+  geom_boxplot(outlier.colour="black", outlier.shape=16, outlier.size=2, notch=FALSE) +
+  scale_fill_manual(values=cbp1) +
+  labs(x="Isolate accession number", y="Zone of inhibition (mm)") +
+  theme_bw(base_size=10, base_family="Arial") + #edit font and size
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+fig1
+```
+
+
+Remove outliers using **outlier.shape=NA** to **geom_boxplot()**.
+
+To remove gridlines: **theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())**.
+
+```{r, results='hold', warning=FALSE}
+fig2 <- ggplot(rawdata, aes(x=Strain, y=ZOI, fill=Target)) +
+  geom_boxplot(outlier.shape=NA) +
+  scale_fill_manual(values=cbp1) +
+  geom_point(position=position_jitterdodge(), alpha=0.5) + # add data points
+  labs(x="Isolate accession number", y="Zone of inhibition (mm)") +
+  theme_bw(base_size=10, base_family="Arial") + #edit font and size
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  theme(legend.position = c(0.9, 0.85)) +
+  theme(aspect.ratio=1) # specifies this will be a square plot
+fig2
+```
+
+Exporting images - this allows to edit size etc.
+
+If not assigned to a project file add: **path="~/Desktop/"**.
+```{r, warning=FALSE}
+ggsave("Fig2.png", plot = fig2, units="cm", height = 12, width = 12, dpi = 1200)
+```
+
+## Multiple plots 
+To show the response of the strains against different targets more clearly, **facet_wrap(~Target)** is used.
+```{r, results='hold', warning=FALSE}
+fig3 <- ggplot(rawdata, aes(x=Strain, y=ZOI)) +
+  geom_boxplot(outlier.shape=NA) +
+  geom_jitter(alpha=0.6) +
+  labs(x="Isolate accession number", y="Zone of inhibition (mm)") +
+  facet_wrap(~Target) +
+  theme_bw(base_size=10, base_family="Arial") + #edit font and size
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+fig3
+```
+
+
+To edit **facet_wrap** labels:
+```{r}
+fig3.labs <- c("E. coli", "B. subtilis", "S. cerevisiae")
+names(fig3.labs) <- c("T1", "T2", "T3")
+```
+Add fill colour to geom_boxplot() with **fill="slategray3"**.
+
+To remove **facet_wrap** label background colour and border:
+
+add **theme(strip.background = element_blank(), panel.border = element_rect(colour="black"))**.
+
+The **panel.border = element_rect(colour="black")** ensures that the top border of the table does not disappear.
+
+```{r, results='hold', warning=FALSE}
+fig4 <- ggplot(rawdata, aes(x=Strain, y=ZOI)) +
+  geom_boxplot(fill="slategray3", outlier.shape=NA) +
+  geom_jitter(alpha=0.6) +
+  labs(x="Isolate accession number", y="Zone of inhibition (mm)") +
+  facet_wrap(~Target, labeller=labeller(Target=fig3.labs)) +
+  theme_bw(base_size=10, base_family="Arial") + #edit font and size
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  theme(strip.background = element_blank(), panel.border = element_rect(colour="black")) + 
+  theme(strip.text = element_text(face="italic", size=12)) + # change font type
+  theme(aspect.ratio=1)
+fig4
+```
+
+## Barplots 
+To calculate mean, SD, SE, IC, and produce a data frame of these results:
+
+Since we need to categorise the ZOI data by **Strain** and **Target**, **group_by()** must include both factors.
+```{r, results='hold', warning=FALSE, message=FALSE}
+raw_sum <- rawdata %>% 
+  group_by(Strain, Target) %>% 
+  summarise(n=n(), mean=mean(ZOI), sd=sd(ZOI)) %>% 
+  mutate(se=sd/sqrt(n)) %>% 
+  mutate(ic=se*qt((1-0.05)/2+.5, n-1))
+raw_sum
+```
+
+```{r, results='hold', warning=FALSE}
+fig5 <- ggplot(raw_sum) + 
+  geom_bar(fill="slategray3", aes(x=Strain, y=mean), stat="identity") +
+  geom_errorbar(aes(x=Strain, ymin=mean-sd, ymax=mean+sd), width=0.4, alpha=0.9, size=0.7) +
+  facet_wrap(~Target, labeller=labeller(Target=fig3.labs)) +
+  labs(x="Isolate accession number", y="Average zone of inhibition (mm)") +
+  theme_bw(base_size=10, base_family="Arial") +
+  theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank()) +
+  theme(strip.background=element_blank(), panel.border=element_rect(colour="black")) +
+  theme(strip.text= element_text(face="italic", size=12), aspect.ratio=1)
+fig5
+```
+
+Export images:
+```{r, warning=FALSE}
+ggsave("fig4.png", plot=fig4, units = c("cm"), height = 12, width = 12, dpi=1200)
+ggsave("raw_sum.png", plot=fig5, units = c("cm"), height = 15, width = 15, dpi=1200)
+```
+
+```{r, include=FALSE}
+raw_lm <- lm(ZOI~Target:Strain, data=rawdata)
+anova(raw_lm)
+summary(raw_lm) 
+TukeyHSD(raw_lm)
+rawdata_Tukey <- TukeyHSD(raw_lm)
+psig=as.numeric(apply(rawdata_Tukey$'Target:Strain'[,2:3],1,prod)>=0)+1
+op_=par(mar=c(4.2,7,3.8,2))
+plot(rawdata_Tukey, col=psig,yaxt="n")
+for (j in 1:length(psig)) {axis(2, at=j, labels=rownames(rawdata_Tukey$'Target:Strain')[length(psig)-j+1],
+                                las=1, cex.axis=.8, col.axis=psig[length(psig)-j+1])}
+```
+
+## Data analysis
+### Calculation {.tabset}
+Find the mean, median, min, max, IQR, SD, variance, SE and assign them to its specific object.
+
+Since, there are 2 categorical data, it should be **ZOI~Target+Strain**.
+```{r, results='hold'}
+mean_ZOI <- mean(ZOI~Target+Strain, data=rawdata)
+median_ZOI <- median(ZOI~Target+Strain, data=rawdata)
+min_ZOI <- min(ZOI~Target+Strain, data=rawdata)
+max_ZOI <- max(ZOI~Target+Strain, data=rawdata)
+ZOI_iqr <- iqr(ZOI~Target+Strain, data=rawdata)
+ZOI_sd <- sd(ZOI~Target+Strain, data=rawdata)
+ZOI_var <- var(ZOI~Target+Strain, data=rawdata)
+ZOI_favdat <- favstats(ZOI~Target+Strain, data=rawdata)
+ZOI_se <- ZOI_sd/sqrt(ZOI_favdat$n)
+```
+
+#### mean-median
+```{r}
+mean_ZOI
+median_ZOI
+```
+
+#### min-max
+```{r}
+min_ZOI
+max_ZOI
+```
+
+#### IQR-SD
+```{r}
+ZOI_iqr
+ZOI_sd
+```
+
+#### ZOI_var
+```{r}
+ZOI_var
+```
+#### ZOI_favdat
+```{r}
+ZOI_favdat
+```
+
+#### ZOI_se
+```{r}
+ZOI_se
+```
+
+### Normality and variance test {.tabset}
+Access only the 'mean' column from **raw_sum** data set.
+```{r}
+raw_mean <- raw_sum$mean
+raw_mean
+```
+Using **rawdata2**:
+```{r}
+head(formattable(rawdata2, align=c("l", "l", "l", "l"), list(Strain=FALSE)))
+```
+
+#### Normality test
+**Normality test** for each target:
+```{r, results='hold'}
+shapiro.test(rawdata2$T1)
+shapiro.test(rawdata2$T2) 
+shapiro.test(rawdata2$T3)
+```
+All shows p<0.05, assumption for normality does not hold but,the central limit theorem tells us that no matter what distribution things have, the sampling distribution tends to be normal if the sample is large enough (n > 30), ignore distribution and use parametric tests.
+
+#### Variance equality test
+Test for equality of **variance**:
+
+***Bartlett's Test***:
+```{r, results='hold'}
+bartlett.test(T1~Strains, data=rawdata2)
+bartlett.test(T2~Strains, data=rawdata2) 
+bartlett.test(T3~Strains, data=rawdata2)
+```
+***Levene's Test***:
+```{r, results='hold'}
+leveneTest(T1~Strains, data=rawdata2)
+leveneTest(T2~Strains, data=rawdata2)
+leveneTest(T3~Strains, data=rawdata2)
+```
+Both test shows p>0.05, therefore, all variance are equal.
+
+### ANOVA {.tabset}
+Use **rawdata2**:
+
+Cannot use rawdata1 because we are not testing the response of each strain between different targets but, rather testing the response between strains within one target! If use rawdata1, TukeyHSD() will give output as T1-T3 etc for Strain 1. We are not testing the significance between targets.
+
+Run ANOVA:
+
+#### Target 1
+For T1, all strain response are significant, especially S1, S4 to S6.
+```{r, results='hold'}
+raw2_T1_lm <- lm(T1~Strains, data=rawdata2)
+anova(raw2_T1_lm)
+summary(raw2_T1_lm)
+```
+
+
+#### Target 2
+For T2, S1 and S3 shows are most significant, and also, S4.
+```{r, results='hold'}
+raw2_T2_lm <- lm(T2~Strains, data=rawdata2)
+anova(raw2_T2_lm)
+summary(raw2_T2_lm)
+```
+
+
+#### Target 3
+For T3, all p>0.05, none are significant but in order of lowest p-value to highest is: S1, S5, S6, S3-S4(same) and S2.
+```{r, results='hold'}
+raw2_T3_lm <- lm(T3~Strains, data=rawdata2)
+anova(raw2_T3_lm)
+summary(raw2_T3_lm)
+```
+
+
+### TukeyHSD and plot {.tabset}
+
+Notes on plotting TukeyHSD: do not rename psig= and op=, just use the same and when running it'll just overwrite the previous plot that used it and **las=** edit angle of labels, **cex.axis=** edits label font size.
+
+#### Target 1
+Mostly no significant differences in ZOI between different strains against Target 1, only S4-S1 and S6-S1 has p<0.05, thus, Strain 1 response against Target 1 the most significant.
+```{r, results='hold'}
+TukeyHSD(raw2_T1_lm)
+# Plot
+T1 <- TukeyHSD(raw2_T1_lm)
+psig=as.numeric(apply(T1$'Strains'[,2:3],1,prod)>=0)+1
+op=par(mar=c(4.2,4.2,3.8,2))
+plot(T1, col=psig,yaxt="n")
+for (j in 1:length(psig)) {axis(2, at=j, labels=rownames(T1$'Strains')[length(psig)-j+1],
+                                las=1, cex.axis=.8, col.axis=psig[length(psig)-j+1])} 
+```
+
+
+#### Target 2
+p<0.001: S3-S1, S3-S2, S4-S3, S5-S3, S6-S3.
+
+Strain 3 response against Target 2 is the most significant.
+```{r, results='hold'}
+TukeyHSD(raw2_T2_lm)
+# Plot
+T2 <- TukeyHSD(raw2_T2_lm)
+psig=as.numeric(apply(T2$'Strains'[,2:3],1,prod)>=0)+1
+op=par(mar=c(4.2,4.2,3.8,2))
+plot(T2, col=psig,yaxt="n")
+for (j in 1:length(psig)) {axis(2, at=j, labels=rownames(T2$'Strains')[length(psig)-j+1],
+                                las=1, cex.axis=.8, col.axis=psig[length(psig)-j+1])} 
+```
+
+
+#### Target 3
+No significant differences in ZOI between strains against Target 3.
+```{r, results='hold'}
+TukeyHSD(raw2_T3_lm)
+# Plot
+T3 <- TukeyHSD(raw2_T3_lm)
+psig=as.numeric(apply(T3$'Strains'[,2:3],1,prod)>=0)+1
+op=par(mar=c(4.2,4.2,3.8,2))
+plot(T3, col=,yaxt="n")
+for (j in 1:length(psig)) {axis(2, at=j, labels=rownames(T3$'Strains')[length(psig)-j+1],
+                                   las=1, cex.axis=.8, col.axis=psig[length(psig)-j+1])}
+```
+
+
+### Check model assumptions {.tabset}
+Plot histogram and QQ:
+
+
+#### Target 1
+All seems alright except distant outliers in histograms but the values mostly never align too far away from the line.
+```{r, results='hold'}
+target1_error <- residuals(raw2_T1_lm)
+hg1 <- gf_histogram(~target1_error) %>% 
+  gf_dens(color="red") %>% 
+  gf_labs(title="A", face="italic", x="Residuals (Zone of inhibition in mm)", y="Frequency") %>% 
+  gf_theme(theme_classic())
+hg1
+  
+qq1 <- gf_qq(~target1_error) %>% 
+  gf_qqline(linetype="dashed", color="red") %>% 
+  gf_labs(title="B", x="Theoretical quantiles", y="Zone of inhibition (mm)") %>% 
+  gf_theme(theme_classic())
+qq1
+```
+
+
+#### Target 2
+All seems alright except distant outliers in histograms but the values mostly never align too far away from the line.
+```{r, results='hold'}
+target2_error <- residuals(raw2_T2_lm)
+hg2 <- gf_histogram(~target2_error) %>% 
+  gf_dens(color="red") %>% 
+  gf_labs(title="C", x="Residuals (Zone of inhibition in mm)", y="Frequency") %>% 
+  gf_theme(theme_classic())
+hg2
+
+qq2 <- gf_qq(~target2_error) %>% 
+  gf_qqline(linetype="dashed", color="red") %>% 
+  gf_labs(title="D", x="Theoretical quantiles", y="Zone of inhibition (mm)") %>% 
+  gf_theme(theme_classic())
+qq2
+```
+
+
+#### Target 3
+All seems alright except distant outliers in histograms but the values mostly never align too far away from the line.
+```{r, results='hold'}
+target3_error <- residuals(raw2_T3_lm)
+hg3 <- gf_histogram(~target3_error) %>% 
+  gf_dens(color="red") %>% 
+  gf_labs(title="E", x="Residuals (Zone of inhibition in mm)", y="Frequency") %>% 
+  gf_theme(theme_classic())
+hg3
+  
+qq3 <- gf_qq(~target3_error) %>% 
+  gf_qqline(linetype="dashed", color="red") %>% 
+  gf_labs(title="F", x="Theoretical quantiles", y="Zone of inhibition (mm)") %>% 
+  gf_theme(theme_classic())
+qq3
+```
+
+
+#### Combine into one figure
+```{r}
+grid.arrange(hg1, hg2, hg3, ncol=3)
+grid.arrange(qq1, qq2, qq3, ncol=3)
+grid.arrange(hg1, qq1, hg2, qq2, hg3, qq3, ncol=2, nrow=3)
+```
+
+
+
+
